@@ -31,15 +31,19 @@ module ALU_Control(
     output reg [3:0] Control_out
 );
     always @(*) begin
-        case({ALUOp, fun7, fun3})
-            6'b00_0_000: Control_out = 4'b0010; // Load/Store (Add)
-            6'b01_0_000: Control_out = 4'b0110; // Beq (Sub)
-            6'b10_0_000: Control_out = 4'b0010; // R-type Add
-            6'b10_1_000: Control_out = 4'b0110; // R-type Sub
-            6'b10_0_111: Control_out = 4'b0000; // R-type And
-            6'b10_0_110: Control_out = 4'b0001; // R-type Or
-            default:     Control_out = 4'b0000;
-        endcase 
+        case(ALUOp)
+            2'b00: Control_out = 4'b0010; // Load/Store (Add)
+            2'b01: Control_out = 4'b0110; // Beq (Sub)
+            2'b10: begin // R-type
+                case(fun3)
+                    3'b000: Control_out = (fun7) ? 4'b0110 : 4'b0010; // Sub : Add
+                    3'b111: Control_out = 4'b0000; // And
+                    3'b110: Control_out = 4'b0001; // Or
+                    default: Control_out = 4'b0010;
+                endcase
+            end
+            default: Control_out = 4'b0010;
+        endcase
     end
 endmodule
 
@@ -92,7 +96,7 @@ module Data_Memory(
     input [31:0] address, Write_data,
     output [31:0] MemData_out
 );
-    reg [31:0] D_Memory[63:0];
+    reg [31:0] D_Memory [63:0];
     integer k;
 
     always @(posedge clk or posedge reset) begin
@@ -100,10 +104,10 @@ module Data_Memory(
             for (k = 0; k < 64; k = k + 1) D_Memory[k] <= 32'b0;
         end 
         else if (MemWrite) begin
-            D_Memory[address >> 2] <= Write_data;
+            D_Memory[address[7:2]] <= Write_data;
         end 
     end
-    assign MemData_out = (MemRead) ? D_Memory[address >> 2] : 32'b0;
+    assign MemData_out = (MemRead) ? D_Memory[address[7:2]] : 32'b0;
 endmodule
 
 // ==========================================
@@ -120,12 +124,12 @@ module ImmGen(
                 ImmExt = {{20{instruction[31]}}, instruction[31:20]};
             7'b0100011: // S-type 
                 ImmExt = {{20{instruction[31]}}, instruction[31:25], instruction[11:7]};
-            7'b1100011: // B-type 
+            7'b1100011: // B-type (Branch)
                 ImmExt = {{19{instruction[31]}}, instruction[31], instruction[7], instruction[30:25], instruction[11:8], 1'b0};
             7'b0110111, 7'b0010111: // U-type
                 ImmExt = {instruction[31:12], 12'b0};
-            7'b1101111: // J-type
-                ImmExt = {{11{instruction[31]}}, instruction[31], instruction[19:12], instruction[20], instruction[30:21], 1'b0};
+            7'b1101111: // J-type (JAL)
+                ImmExt = {{12{instruction[31]}}, instruction[19:12], instruction[20], instruction[30:21], 1'b0};
             default: ImmExt = 32'b0;
         endcase
     end
@@ -142,7 +146,7 @@ module Instruction_Mem(
     initial begin
         $readmemh("mem.dump", Imen);
     end
-    assign instruction_out = Imen[read_address >> 2];
+    assign instruction_out = Imen[read_address[7:2]];
 endmodule
 
 // ==========================================
@@ -186,8 +190,8 @@ module Reg_file(
             Registers[rd] <= write_data;
         end 
     end
-    assign read_data1 = Registers[rs1];
-    assign read_data2 = Registers[rs2];
+    assign read_data1 = (rs1 == 5'b0) ? 32'b0 : Registers[rs1];
+    assign read_data2 = (rs2 == 5'b0) ? 32'b0 : Registers[rs2];
 endmodule
 
 // ==========================================
@@ -236,33 +240,4 @@ module top(input clk, reset);
 
     Mux2to1 WB_Mux (.in0(ALU_Result_top), .in1(Mem_data_top), .sel(MemtoReg_top), .out(WriteBack_top));
 
-endmodule
-
-// ==========================================
-// Testbench Module 
-// ==========================================
-module tb_top;
-    reg clk, reset;
-
-    top uut (.clk(clk), .reset(reset));
-
-    initial begin 
-        clk = 0;
-        reset = 1;
-        #15 reset = 0;
-        
-        // Theo dõi một số tín hiệu quan trọng
-        $monitor("Time=%0t | PC=%h | Inst=%h | ALU_Res=%h | WB=%h", 
-                 $time, uut.PC_top, uut.instruction_top, uut.ALU_Result_top, uut.WriteBack_top);
-        
-        #500 $finish;
-    end
-
-    always #5 clk = ~clk;
-
-    // Xuất file sóng để xem trên GTKWave
-    initial begin
-        $dumpfile("riscv_sim.vcd");
-        $dumpvars(0, tb_top);
-    end
 endmodule
