@@ -1,21 +1,10 @@
-module Intruction_Mem(
-    input clk,
-    input rst,
-    input [31:0] read_addess,
-    output reg [31:0] intruction_out
+module Instruction_Mem( 
+    input [31:0] read_address,
+    output [31:0] instruction_out
 );
-
-reg [31:0] Imen[63:0];
-integer k;
-
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
-        for (k = 0; k < 64; k = k + 1) begin
-            Imen[k] <= 32'b0;
-        end
-    end else begin
-        intruction_out <= Imen[read_addess[5:0]];
+    reg [31:0] Imen [63:0];
+    initial begin
+        $readmemh("mem.dump", Imen);
     end
-end
-
+    assign instruction_out = Imen[read_address[7:2]];
 endmodule
