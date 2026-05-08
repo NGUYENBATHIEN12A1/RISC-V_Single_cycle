@@ -6,18 +6,25 @@
 [![Language](https://img.shields.io/badge/Language-SystemVerilog-brightgreen.svg)]()
 [![PDK](https://img.shields.io/badge/PDK-SkyWater%20130nm-orange.svg)]()
 
-*A 32-bit single-cycle RISC-V CPU core designed from scratch.*
+*A 32-bit single-cycle RISC-V CPU core designed from scratch, optimized for digital IC design flows.*
 
 </div>
 
 ## 📖 Overview
-This project implements a single-cycle processor architecture based on the **RISC-V (RV32I)** Base Integer Instruction Set. It is designed with a focus on digital IC design flow, RTL modeling, and functional verification. 
+
+This project implements a single-cycle processor architecture based on the **RISC-V (RV32I)** Base Integer Instruction Set. It serves as a comprehensive educational and practical reference for RTL modeling, functional verification, and logic synthesis within a modern digital design flow.
+
+### ✨ Key Features
+* **Architecture:** 32-bit Single-Cycle Datapath.
+* **ISA Support:** Standard RV32I Base Integer Instruction Set.
+* **Modularity:** Cleanly separated functional units (ALU, Register File, Control Unit, etc.).
+* **ASIC Ready:** Synthesizable SystemVerilog code, targeting the open-source SkyWater 130nm PDK.
 
 ---
 
 ## 🏗️ Hardware Architecture & Datapath
 
-The core follows a classic single-cycle datapath layout. It integrates essential components including the Program Counter (PC), Instruction Memory, Register File, ALU, Data Memory, and a Control Unit to decode instructions and manage data routing.
+The core follows a classic single-cycle datapath layout. It seamlessly integrates essential components including the Program Counter (PC), Instruction Memory (IMEM), Register File, Arithmetic Logic Unit (ALU), Data Memory (DMEM), and the Main Control Unit to decode instructions and manage data routing.
 
 <div align="center">
   <img width="850" alt="RISC-V Datapath" src="https://github.com/user-attachments/assets/de6d36b7-e479-4b10-8c32-dd630c18e295" />
@@ -28,7 +35,7 @@ The core follows a classic single-cycle datapath layout. It integrates essential
 
 ## 🧩 Instruction Formats
 
-The Control Unit is designed to decode and execute the base 32-bit instruction formats as defined by the standard RISC-V ISA specification. 
+The decoding logic is designed to execute the base 32-bit instruction formats rigorously defined by the standard RISC-V ISA specification.
 
 <div align="center">
   <img width="800" alt="RISC-V Instruction Formats" src="https://github.com/user-attachments/assets/fff457b9-adf3-4bec-a929-c51a0afdf2b2" />
@@ -37,7 +44,31 @@ The Control Unit is designed to decode and execute the base 32-bit instruction f
 
 ---
 
+## 🧠 Control Logic Implementation
+
+The processor relies on a robust, two-tier control logic system to decode opcodes and orchestrate the ALU operations.
+
+### 1. Main Control Unit
+Acts as the central brain of the processor. It parses the 7-bit `opcode` from the fetched instruction to assert the correct multiplexer selection signals and memory access flags (`MemRead`, `MemWrite`, `RegWrite`, etc.).
+
+<div align="center">
+  <img width="800" alt="Control Unit Implementation" src="https://github.com/user-attachments/assets/1ab7f60c-0b78-4ecf-b385-a590567066d4" />
+  <p><i>Figure 3: Main Control Unit RTL Logic</i></p>
+</div>
+
+### 2. ALU Control Module
+Works in tandem with the Main Control Unit. It takes the broad `ALUOp` signal and refines it using the `funct3` and `funct7` fields from the instruction to dictate the precise arithmetic or logical operation the ALU must perform (e.g., distinguishing between ADD and SUB in R-type instructions).
+
+<div align="center">
+  <img width="800" alt="ALU Control Implementation" src="https://github.com/user-attachments/assets/761b4f21-86e5-41d7-9a42-bd0320025a33" />
+  <p><i>Figure 4: ALU Control RTL Logic</i></p>
+</div>
+
+---
+
 ## 🛠️ Technologies & Tools
+
+This core was developed and verified using industry-standard tools and methodologies:
 
 * **Hardware Description Language:** SystemVerilog
 * **Simulation & Verification:** ModelSim / Verilator
@@ -47,6 +78,6 @@ The Control Unit is designed to decode and execute the base 32-bit instruction f
 
 ---
 
-<img width="1024" height="559" alt="image" src="https://github.com/user-attachments/assets/1ab7f60c-0b78-4ecf-b385-a590567066d4" />
-
-
+<div align="center">
+  <i>If you find this project helpful, please consider giving it a ⭐️!</i>
+</div>
