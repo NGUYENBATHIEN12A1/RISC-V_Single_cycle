@@ -1,21 +1,23 @@
 // ALU Control
-module ALU_Control(ALUOp, fun7, fun3, Control_out);
-
-input fun7;
-input [2:0] fun3;
-input [1:0] ALUOp;
-output reg [3:0] Control_out;
-
-always @(*)
-begin
-    case({ALUOp, fun7, fun3})
-        6'b00_0_000: Control_out <= 4'b0010;
-        6'b01_0_000: Control_out <= 4'b0110;
-        6'b10_0_000: Control_out <= 4'b0010;
-        6'b10_1_000: Control_out <= 4'b0110;
-        6'b10_0_111: Control_out <= 4'b0000;
-        6'b10_0_110: Control_out <= 4'b0001;
-    endcase
-end
-
+module ALU_Control(
+    input [1:0] ALUOp,
+    input fun7,
+    input [2:0] fun3,
+    output reg [3:0] Control_out
+);
+    always @(*) begin
+        case(ALUOp)
+            2'b00: Control_out = 4'b0010; // Load/Store (Add)
+            2'b01: Control_out = 4'b0110; // Beq (Sub)
+            2'b10: begin // R-type
+                case(fun3)
+                    3'b000: Control_out = (fun7) ? 4'b0110 : 4'b0010; // Sub : Add
+                    3'b111: Control_out = 4'b0000; // And
+                    3'b110: Control_out = 4'b0001; // Or
+                    default: Control_out = 4'b0010;
+                endcase
+            end
+            default: Control_out = 4'b0010;
+        endcase
+    end
 endmodule
