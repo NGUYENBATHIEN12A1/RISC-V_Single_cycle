@@ -1,39 +1,44 @@
-//top module
-module top(clk, reset);
-input clk, reset;
-wire [31:0] PC_top, instruction_top,Rd1_top.Rd2_top,ImmExt_top,mux1_top,Sum_out_top,NextoPC_top,PCin_top,address_top,Mem_data_top;
-wire Regwrite_top,ALU_src_top,zero_top,branch_top,sel2_top,MemtoReg_top,MemWrite_top,MemRead_top,WriteBack_top;
-wire [1:0]ALUOp_top;
-wire [3:0] Control_top;
-// Program Counter
-Program_counter PC(.clk(clk),.reset(reset),.PC_in(PCin_top),.PC_out(PC_top));
-// PC Adder
-PCplus4 PC_Adder(.fromPC(PC_top),.NextoPC(NextoPC_top));
-// Instruction Memory
-Instruction_Memory Inst_Memory(.clk(clk),.reset(reset),.read_address(PC_top),.instruction_out(instruction_top));
-// Register File
-Reg_File Reg_File(.clk(clk),.reset(reset),.RegWrite(Regwrite_top),.Rs1(instruction_top[19:15]),.Rs2(instruction_top[24:20]),.Rd(instruction_top[11:7]),.Write_data(WriteBack_top),.read_data1(Rd1_top),.read_data2(Rd2_top));
-//Imm Gen
-// Immediate Generator
-ImmGen ImmGen_inst (.Opcode(instruction_top[6:0]),.instruction(instruction_top),.ImmExt(ImmExt_top));
-// Control Unit
-Control_Unit Control_Unit_inst (.instruction(instruction_top[6:0]),.Branch(branch_top),.MemRead(MemRead_top),.MemtoReg(MemtoReg_top),.ALUOp(ALUOp_top),.MemWrite(MemWrite_top),.ALUSrc(ALU_src_top),.RegWrite(RegWrite_top));
-// ALU Control
-ALU_Control ALU_Control_inst (.ALUOp(ALUOp_top),.fun7(instruction_top[30]),.fun3(instruction_top[14:12]),.Control_out(Control_top));
-//ALU
-ALU_unit ALU(.A(Rd1_top), .B(mux1_top),.Control_in(Control_top),.ALU_Result(address_top),.zero(zero_top));
-//ALU mux
-Mux1 ALU_mux(.sel1(ALU_src_top),.A1(Rd2_top),B1(ImmExt_top),Mux_out(mux1_top));
-//Adder
-Adder Adder(.in_1(PC_top), .in_2(ImmExt_top), .Sum_out(Sum_out_top));
-//And logic
-AND_logic AND(.branch(branch_top), .zero(zero_top), .and_out(sel2_top));
+module top(input clk, reset);
+    wire [31:0] PC_top, instruction_top, Rd1_top, Rd2_top, ImmExt_top, ALU_B_top;
+    wire [31:0] Branch_Addr_top, NextPC_top, PCplus4_top, ALU_Result_top, Mem_data_top, WriteBack_top;
+    wire Regwrite_top, ALUSrc_top, zero_top, branch_top, PCSrc_top, MemtoReg_top, MemWrite_top, MemRead_top;
+    wire [1:0] ALUOp_top;
+    wire [3:0] Control_top;
 
-mux2 Adder_mux(.sell2(sel2_top),.A2(NextoPC_top),.B2(Sum_out_top),.mux2_out(PCin_top));
+    Program_Counter PC_inst (.clk(clk), .rst(reset), .PC_in(NextPC_top), .PC_out(PC_top));
+    PCplus4 PC4_inst (.fromPC(PC_top), .NextoPC(PCplus4_top));
+    Instruction_Mem IM_inst (.read_address(PC_top), .instruction_out(instruction_top));
+    
+    Reg_file RF_inst (
+        .clk(clk), .rst(reset), .Reg_write(Regwrite_top),
+        .rs1(instruction_top[19:15]), .rs2(instruction_top[24:20]), .rd(instruction_top[11:7]),
+        .write_data(WriteBack_top), .read_data1(Rd1_top), .read_data2(Rd2_top)
+    );
 
-//Data memory
-Data_Memory(.clk(clk), .reset(reset), .MemWrite(MemWrite_top), .MemRead(MemRead_top), .read_address(address_top), .Write_data(Rd2_top), .MemData_out(Mem_data_top));
+    ImmGen IG_inst (.Opcode(instruction_top[6:0]), .instruction(instruction_top), .ImmExt(ImmExt_top));
+    
+    Control_Unit CU_inst (
+        .instruction(instruction_top[6:0]), .Branch(branch_top), .MemRead(MemRead_top),
+        .MemtoReg(MemtoReg_top), .ALUOp(ALUOp_top), .MemWrite(MemWrite_top),
+        .ALUSrc(ALUSrc_top), .RegWrite(Regwrite_top)
+    );
 
-mux3 (.sell3(MemtoReg_top),.A3(address_top),.B3(Mem_data_top),.mux3_out(WriteBack_top));
+    ALU_Control AC_inst (.ALUOp(ALUOp_top), .fun7(instruction_top[30]), .fun3(instruction_top[14:12]), .Control_out(Control_top));
+    
+    Mux2to1 ALU_in_Mux (.in0(Rd2_top), .in1(ImmExt_top), .sel(ALUSrc_top), .out(ALU_B_top));
+    
+    ALU_unit ALU_inst (.A(Rd1_top), .B(ALU_B_top), .Control_in(Control_top), .ALU_Result(ALU_Result_top), .zero(zero_top));
+
+    Adder Branch_Adder (.in_1(PC_top), .in_2(ImmExt_top), .Sum_out(Branch_Addr_top));
+
+    assign PCSrc_top = branch_top & zero_top;
+    Mux2to1 PC_Mux (.in0(PCplus4_top), .in1(Branch_Addr_top), .sel(PCSrc_top), .out(NextPC_top));
+
+    Data_Memory DM_inst (
+        .clk(clk), .reset(reset), .MemWrite(MemWrite_top), .MemRead(MemRead_top),
+        .address(ALU_Result_top), .Write_data(Rd2_top), .MemData_out(Mem_data_top)
+    );
+
+    Mux2to1 WB_Mux (.in0(ALU_Result_top), .in1(Mem_data_top), .sel(MemtoReg_top), .out(WriteBack_top));
 
 endmodule
